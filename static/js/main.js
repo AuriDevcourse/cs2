@@ -267,15 +267,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePurchaseFields() {
-        const source = itemPurchaseSource.value;
+        const source = document.getElementById('itemPurchaseSource')?.value || '';
+        const priceContainer = document.getElementById('purchasePriceContainer');
+        const coinsContainer = document.getElementById('purchaseCoinsContainer');
+        const priceInput = document.getElementById('purchasePrice');
+        const coinsInput = document.getElementById('purchaseCoins');
+    
         if (source === 'Trading') {
-            purchasePriceContainer.style.display = 'none';
-            purchaseCoinsContainer.style.display = 'block';
-            document.getElementById('purchasePrice').value = '';
+            if (priceContainer) priceContainer.style.display = 'none';
+            if (coinsContainer) coinsContainer.style.display = 'block';
+            if (priceInput) priceInput.value = '';
         } else {
-            purchasePriceContainer.style.display = 'block';
-            purchaseCoinsContainer.style.display = 'none';
-            document.getElementById('purchaseCoins').value = '';
+            if (priceContainer) priceContainer.style.display = 'block';
+            if (coinsContainer) coinsContainer.style.display = 'none';
+            if (coinsInput) coinsInput.value = '';
         }
     }
 
@@ -328,24 +333,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function editItem(item) {
+        // Populate form with item data
         document.getElementById('itemId').value = item.id;
         document.getElementById('itemName').value = item.name;
         document.getElementById('itemCategory').value = item.category;
-        updateSubcategories(itemCategory, itemSubcategory);
+        
+        // Update subcategories based on category
+        updateSubcategories(document.getElementById('itemCategory'), document.getElementById('itemSubcategory'));
         document.getElementById('itemSubcategory').value = item.subcategory;
+        
         document.getElementById('itemFloat').value = item.float || '';
         document.getElementById('itemPurchaseSource').value = item.purchase_source;
-        
+        document.getElementById('itemStatus').value = item.status;
+        document.getElementById('itemNotes').value = item.notes || '';
+
+        // Update purchase fields based on source
+        updatePurchaseFields();
+
+        // Set purchase price/coins
         if (item.purchase_source === 'Trading') {
             document.getElementById('purchaseCoins').value = item.purchase_coins || '';
         } else {
             document.getElementById('purchasePrice').value = item.purchase_price || '';
         }
-        
-        document.getElementById('itemStatus').value = item.status;
-        document.getElementById('itemNotes').value = item.notes || '';
 
-        updatePurchaseFields();
+        // Show modal
+        const addItemModal = new bootstrap.Modal(document.getElementById('addItemModal'));
         addItemModal.show();
     }
 
