@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Skin Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active text-white" href="#">
+                                <span class="material-icons">dashboard</span> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="#">
+                                <span class="material-icons">analytics</span> Analytics
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="#">
+                                <span class="material-icons">settings</span> Settings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1>CS2 Skin Tracker</h1>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="addItemBtn">
+                            <span class="material-icons">add</span> Add New Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Items</h5>
+                                <p class="card-text" id="totalItems">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Items</h5>
+                                <p class="card-text" id="activeItems">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Inventory Items</h5>
+                                <p class="card-text" id="inventoryItems">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Filters</h5>
+                        <button class="btn btn-outline-secondary" id="toggleFilters">
+                            <span class="material-icons">expand_more</span>
+                        </button>
+                    </div>
+                    <div class="card-body" id="filterSection">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="filterCategory" class="form-label">Category</label>
+                                <select class="form-select" id="filterCategory">
+                                    <option value="">All Categories</option>
+                                    <option value="Knives">Knives</option>
+                                    <option value="Gloves">Gloves</option>
+                                    <option value="Rifles">Rifles</option>
+                                    <option value="Pistols">Pistols</option>
+                                    <option value="SMGs">SMGs</option>
+                                    <option value="Shotguns">Shotguns</option>
+                                    <option value="Machine Guns">Machine Guns</option>
+                                    <option value="Agents">Agents</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="filterSubcategory" class="form-label">Subcategory</label>
+                                <select class="form-select" id="filterSubcategory" disabled>
+                                    <option value="">All Subcategories</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="filterStatus" class="form-label">Status</label>
+                                <select class="form-select" id="filterStatus">
+                                    <option value="">All Status</option>
+                                    <option value="Tradelock">Tradelock</option>
+                                    <option value="Inventory">Inventory</option>
+                                    <option value="On Sale">On Sale</option>
+                                    <option value="Sold">Sold</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="itemsTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="selectAllItems">
+                                    </div>
+                                </th>
+                                <th>Subcategory</th>
+                                <th>Skin Name</th>
+                                <th>Float Value</th>
+                                <th>Purchase Source</th>
+                                <th>Purchase Price</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                            <!-- Items will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal fade" id="addItemModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addItemForm">
+                        <input type="hidden" id="itemId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="itemName" class="form-label">Skin Name</label>
+                                <input type="text" class="form-control" id="itemName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="itemCategory" class="form-label">Category</label>
+                                <select class="form-select" id="itemCategory" required>
+                                    <option value="">Select Category</option>
+                                    <option value="Knives">Knives</option>
+                                    <option value="Gloves">Gloves</option>
+                                    <option value="Rifles">Rifles</option>
+                                    <option value="Pistols">Pistols</option>
+                                    <option value="SMGs">SMGs</option>
+                                    <option value="Shotguns">Shotguns</option>
+                                    <option value="Machine Guns">Machine Guns</option>
+                                    <option value="Agents">Agents</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="itemSubcategory" class="form-label">Subcategory</label>
+                                <select class="form-select" id="itemSubcategory" required>
+                                    <option value="">Select Subcategory</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="itemFloat" class="form-label">Float Value</label>
+                                <input type="number" class="form-control" id="itemFloat" min="0" max="1" step="0.000001">
+                                <div id="floatPreview" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="itemPurchaseSource" class="form-label">Purchase Source</label>
+                                <select class="form-select" id="itemPurchaseSource" required>
+                                    <option value="">Select Source</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="purchasePriceContainer">
+                                <label for="purchasePrice" class="form-label">Purchase Price (EUR)</label>
+                                <input type="number" step="0.01" class="form-control" id="purchasePrice">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="itemStatus" class="form-label">Status</label>
+                                <select class="form-select" id="itemStatus" required>
+                                    <option value="">Select Status</option>
+                                    <option value="Tradelock">Tradelock</option>
+                                    <option value="Inventory">Inventory</option>
+                                    <option value="On Sale">On Sale</option>
+                                    <option value="Sold">Sold</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="unlockDateContainer" style="display: none;">
+                                <label for="unlockDate" class="form-label">Unlock Date</label>
+                                <input type="datetime-local" class="form-control" id="unlockDate">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="purchasePrice" class="form-label">Purchase Price (EUR)</label>
+                                <input type="number" step="0.01" class="form-control" id="purchasePrice">
+                            </div>
+                            <div class="col-md-6 mb-3" id="listingPriceContainer" style="display: none;">
+                                <label for="listingPrice" class="form-label">Listing Price (EUR)</label>
+                                <input type="number" step="0.01" class="form-control" id="listingPrice">
+                            </div>
+                        </div>
+                        <div class="row" id="soldDetailsContainer" style="display: none;">
+                            <div class="col-md-4 mb-3">
+                                <label for="soldPrice" class="form-label">Sold Price (EUR)</label>
+                                <input type="number" step="0.01" class="form-control" id="soldPrice">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="sellingFee" class="form-label">Selling Fee (2%)</label>
+                                <input type="number" step="0.01" class="form-control" id="sellingFee" readonly>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="netProfit" class="form-label">Net Profit</label>
+                                <input type="number" step="0.01" class="form-control" id="netProfit" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="itemNotes" class="form-label">Notes & Item Link</label>
+                                <input type="text" class="form-control" id="itemNotes" placeholder="Add notes or paste CSFloat item link">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <span class="material-icons">close</span> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveItemBtn">
+                        <span class="material-icons">save</span> Save Item
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='css/style.css') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
