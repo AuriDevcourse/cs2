@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CS2 Skin Tracker</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -48,13 +49,49 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Remove hover effects */
+        .table-hover tbody tr:hover {
+            background-color: transparent !important;
+        }
+
+        .card:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Add subtle border to cards */
+        .card {
+            border: 1px solid rgba(0,0,0,0.125);
+            transition: none;
+        }
+
+        /* Improve form validation */
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: none;
+        }
+
+        .form-control.is-invalid:focus {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+
+        /* New border styles */
+        .card, .table-responsive, .modal-content {
+            border: 1px solid #495057 !important;
+        }
+
+        .sidebar {
+            border-right: 1px solid #495057 !important;
+        }
     </style>
 </head>
 <body>
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse" id="sidebarMenu">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
                         <li class="nav-item">
@@ -79,6 +116,9 @@
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <button class="btn btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="material-icons">menu</span>
+                    </button>
                     <h1>CS2 Skin Tracker</h1>
                     <div class="btn-group">
                         <button class="btn btn-primary" id="addItemBtn">
@@ -87,29 +127,36 @@
                     </div>
                 </div>
 
-                <!-- Dashboard Summary -->
-                <div class="row mb-4">
-                    <div class="col-md-4">
-                        <div class="card">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-primary mb-3">
                             <div class="card-body">
                                 <h5 class="card-title">Total Items</h5>
-                                <p class="card-text" id="totalItems">0</p>
+                                <p class="card-text display-4" id="totalItemsCount">0</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-success mb-3">
                             <div class="card-body">
-                                <h5 class="card-title">Active Items</h5>
-                                <p class="card-text" id="activeItems">0</p>
+                                <h5 class="card-title">Selling Items</h5>
+                                <p class="card-text display-4" id="sellingItemsCount">0</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning mb-3">
                             <div class="card-body">
-                                <h5 class="card-title">Total Value</h5>
-                                <p class="card-text" id="totalValue">€0.00</p>
+                                <h5 class="card-title">Tradelock Items</h5>
+                                <p class="card-text display-4" id="tradelockItemsCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-danger mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Sold Items</h5>
+                                <p class="card-text display-4" id="soldItemsCount">0</p>
                             </div>
                         </div>
                     </div>
@@ -126,7 +173,9 @@
                     <div class="card-body" id="filterSection">
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label for="filterCategory" class="form-label">Category</label>
+                                <label for="filterCategory" class="form-label">
+                                    <span class="material-icons">category</span> Category
+                                </label>
                                 <select class="form-select" id="filterCategory">
                                     <option value="">All Categories</option>
                                     <option value="Knives">Knives</option>
@@ -140,13 +189,17 @@
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="filterSubcategory" class="form-label">Subcategory</label>
+                                <label for="filterSubcategory" class="form-label">
+                                    <span class="material-icons">list</span> Subcategory
+                                </label>
                                 <select class="form-select" id="filterSubcategory">
                                     <option value="">All Subcategories</option>
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="filterStatus" class="form-label">Status</label>
+                                <label for="filterStatus" class="form-label">
+                                    <span class="material-icons">check_circle</span> Status
+                                </label>
                                 <select class="form-select" id="filterStatus">
                                     <option value="">All Status</option>
                                     <option value="Tradelock">Tradelock</option>
@@ -165,83 +218,19 @@
                     
                     <!-- Selling Items -->
                     <h4 class="mt-4">Selling Items</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Float</th>
-                                    <th>Source</th>
-                                    <th>Purchase Price</th>
-                                    <th>Selling Price</th>
-                                    <th>Profit</th>
-                                    <th class="action-column">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sellingItemsContainer"></tbody>
-                        </table>
-                    </div>
+                    <div id="sellingItemsContainer" class="row row-cols-1 row-cols-md-10 g-2 px-2"></div>
 
                     <!-- Tradelock Items -->
                     <h4 class="mt-4">Tradelock Items</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Float</th>
-                                    <th>Source</th>
-                                    <th>Purchase Price</th>
-                                    <th>Sold Price</th>
-                                    <th>Profit</th>
-                                    <th class="action-column">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tradelockItemsContainer"></tbody>
-                        </table>
-                    </div>
+                    <div id="tradelockItemsContainer" class="row row-cols-1 row-cols-md-10 g-2 px-2"></div>
 
                     <!-- Inventory Items -->
                     <h4 class="mt-4">Available Items</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Float</th>
-                                    <th>Source</th>
-                                    <th>Purchase Price</th>
-                                    <th>Sold Price</th>
-                                    <th>Profit</th>
-                                    <th class="action-column">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventoryItemsContainer"></tbody>
-                        </table>
-                    </div>
+                    <div id="inventoryItemsContainer" class="row row-cols-1 row-cols-md-10 g-2 px-2"></div>
 
                     <!-- Sold Items -->
                     <h4 class="mt-4">Sold Items</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Float</th>
-                                    <th>Source</th>
-                                    <th>Purchase Price</th>
-                                    <th>Sold Price</th>
-                                    <th>Profit</th>
-                                    <th class="action-column">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="soldItemsContainer"></tbody>
-                        </table>
-                    </div>
+                    <div id="soldItemsContainer" class="row row-cols-1 row-cols-md-10 g-2 px-2"></div>
                 </div>
             </main>
         </div>
@@ -261,8 +250,21 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="itemName" class="form-label">Skin Name</label>
-                                <input type="text" class="form-control" id="itemName" required>
+                                <select class="form-select" id="itemName" required>
+                                    <option value="">Select Skin</option>
+                                    <option value="Driver Gloves Lunar Weave">Driver Gloves Lunar Weave</option>
+                                    <option value="Bowie Knife Black Laminate">Bowie Knife Black Laminate</option>
+                                    <option value="Shadow Daggers Urban Masked">Shadow Daggers Urban Masked</option>
+                                    <option value="AK47 Vulcan">AK47 Vulcan</option>
+                                </select>
                             </div>
+                            <div class="col-md-6 mb-3 text-center">
+                                <label class="form-label">Item Preview</label>
+                                <img id="addItemImagePreview" src="/static/default_item.png" alt="Item Preview" 
+                                     style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="itemCategory" class="form-label">Category</label>
                                 <select class="form-select" id="itemCategory" required>
@@ -277,20 +279,18 @@
                                     <option value="Agents">Agents</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="itemSubcategory" class="form-label">Subcategory</label>
                                 <select class="form-select" id="itemSubcategory" required>
                                     <option value="">Select Subcategory</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="itemFloat" class="form-label">Float Value</label>
                                 <input type="number" class="form-control" id="itemFloat" min="0" max="1" step="0.000001">
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="itemPurchaseSource" class="form-label">Purchase Source</label>
                                 <select class="form-select" id="itemPurchaseSource" required>
@@ -333,7 +333,10 @@
                             </div>
                             <div class="col-md-6 mb-3" id="unlockDateContainer" style="display: none;">
                                 <label for="unlockDate" class="form-label">Unlock Date</label>
-                                <input type="datetime-local" class="form-control" id="unlockDate">
+                                <input type="date" class="form-control" id="unlockDate" 
+                                    min="{{ (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
+                                    max="{{ (datetime.now() + timedelta(days=365)).strftime('%Y-%m-%d') }}"
+                                >
                             </div>
                         </div>
                         <div class="row">
@@ -351,7 +354,124 @@
             </div>
         </div>
     </div>
-
+ <!-- Edit Item Modal -->
+ <div class="modal fade" id="editItemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editItemForm">
+                    <input type="hidden" id="editItemId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editName" class="form-label">Skin Name</label>
+                            <select class="form-select" id="editName" required>
+                                <option value="">Select Skin</option>
+                                <option value="Driver Gloves Lunar Weave">Driver Gloves Lunar Weave</option>
+                                <option value="Bowie Knife Black Laminate">Bowie Knife Black Laminate</option>
+                                <option value="Shadow Daggers Urban Masked">Shadow Daggers Urban Masked</option>
+                                <option value="AK47 Vulcan">AK47 Vulcan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 text-center">
+                            <label class="form-label">Item Preview</label>
+                            <img id="editItemImagePreview" src="/static/default_item.png" alt="Item Preview" 
+                                 style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editCategory" class="form-label">Category</label>
+                            <select class="form-select" id="editCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="Knives">Knives</option>
+                                <option value="Gloves">Gloves</option>
+                                <option value="Rifles">Rifles</option>
+                                <option value="Pistols">Pistols</option>
+                                <option value="SMGs">SMGs</option>
+                                <option value="Shotguns">Shotguns</option>
+                                <option value="Machine Guns">Machine Guns</option>
+                                <option value="Agents">Agents</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editSubcategory" class="form-label">Subcategory</label>
+                            <select class="form-select" id="editSubcategory" required>
+                                <option value="">Select Subcategory</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editFloat" class="form-label">Float Value</label>
+                            <input type="number" class="form-control" id="editFloat" min="0" max="1" step="0.000001">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editPurchaseSource" class="form-label">Purchase Source</label>
+                            <select class="form-select" id="editPurchaseSource" required>
+                                <option value="" disabled selected>Select source</option>
+                                <option value="Steam Market">Steam Market</option>
+                                <option value="Trading">Trading</option>
+                                <option value="Case Opening">Case Opening</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3" id="editPurchasePriceGroup">
+                            <label for="editPurchasePrice" class="form-label">Purchase Price (EUR)</label>
+                            <input type="number" step="0.01" class="form-control" id="editPurchasePrice">
+                        </div>
+                        <div class="col-md-6 mb-3" id="editPurchaseCoinsGroup" style="display: none;">
+                            <label for="editPurchaseCoins" class="form-label">Purchase Coins</label>
+                            <input type="number" class="form-control" id="editPurchaseCoins">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editStatus" class="form-label">Status</label>
+                            <select class="form-select" id="editStatus" required>
+                                <option value="" disabled selected>Select status</option>
+                                <option value="Inventory">Inventory</option>
+                                <option value="Selling">Selling</option>
+                                <option value="Tradelock">Tradelock</option>
+                                <option value="Sold">Sold</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3" id="editSellingPriceGroup" style="display: none;">
+                            <label for="editSellingPrice" class="form-label">Selling Price</label>
+                            <input type="number" step="0.01" class="form-control" id="editSellingPrice">
+                        </div>
+                        <div class="col-md-6 mb-3" id="editSoldPriceGroup" style="display: none;">
+                            <label for="editSoldPrice" class="form-label">Sold Price</label>
+                            <input type="number" step="0.01" class="form-control" id="editSoldPrice">
+                        </div>
+                        <div class="col-md-6 mb-3" id="editUnlockDateGroup" style="display: none;">
+                            <label for="editUnlockDate" class="form-label">Unlock Date</label>
+                            <input type="date" class="form-control" id="editUnlockDate" 
+                                min="{{ (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
+                                max="{{ (datetime.now() + timedelta(days=365)).strftime('%Y-%m-%d') }}"
+                            >
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="editNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="editNotes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" form="editItemForm">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">

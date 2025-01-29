@@ -19,6 +19,26 @@ const subcategories = {
     'Agents': ['CT Agents', 'T Agents']
 };
 
+// Predefined skin names with their corresponding images
+const SKIN_NAMES = {
+    'Driver Gloves Lunar Weave': '/static/lunar_weave_driver_gloves.png',
+    'Bowie Knife Black Laminate': '/static/black_laminate_bowie_knife.png',
+    'Shadow Daggers Urban Masked': '/static/urban_masked_shadow_daggers.png',
+    'AK47 Vulcan': '/static/vulcan_ak47.png'
+};
+
+// Predefined image mapping with normalized keys
+const ITEM_IMAGES = {
+    'driver gloves lunar weave': '/static/lunar_weave_driver_gloves.png',
+    'bowie knife black laminate': '/static/black_laminate_bowie_knife.png',
+    'shadow daggers urban masked': '/static/urban_masked_shadow_daggers.png',
+    'vulcan ak-47': '/static/vulcan_ak47.png'
+};
+
+function getItemImage(itemName) {
+    return SKIN_NAMES[itemName] || '/static/default_item.png';
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Bootstrap components
@@ -60,32 +80,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Category change handlers
     if (itemCategory) {
         itemCategory.addEventListener('change', function() {
+            const subcategorySelect = document.getElementById('itemSubcategory');
+            
+            // Populate subcategories
             populateSubcategories(this.value);
+            
+            // Enable the subcategory dropdown
+            if (subcategorySelect) {
+                subcategorySelect.disabled = false;
+            }
         });
     }
 
     if (filterCategory) {
         filterCategory.addEventListener('change', function() {
+            updateFilterSubcategories();
             currentFilters.category = this.value;
-            filterAndRenderItems();
+            currentFilters.subcategory = ''; // Reset subcategory
+            loadItems();
         });
     }
 
     // Status change handlers
     if (itemStatus) {
         itemStatus.addEventListener('change', function() {
+            toggleUnlockDateVisibility(this.value, 'unlockDateContainer', 'unlockDate');
             const sellingPriceGroup = document.getElementById('sellingPriceGroup');
             const soldPriceGroup = document.getElementById('soldPriceGroup');
-            const unlockDateGroup = document.getElementById('unlockDateGroup');
             
             // Show/hide selling price field
             sellingPriceGroup.style.display = this.value === 'Selling' ? 'block' : 'none';
             
             // Show/hide sold price field
             soldPriceGroup.style.display = this.value === 'Sold' ? 'block' : 'none';
-            
-            // Show/hide unlock date field
-            unlockDateGroup.style.display = this.value === 'Tradelock' ? 'block' : 'none';
             
             // Clear fields when not visible
             if (this.value !== 'Selling') {
@@ -94,16 +121,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.value !== 'Sold') {
                 document.getElementById('soldPrice').value = '';
             }
-            if (this.value !== 'Tradelock') {
-                document.getElementById('unlockDate').value = '';
-            }
         });
     }
 
     if (filterStatus) {
         filterStatus.addEventListener('change', function() {
             currentFilters.status = this.value;
-            filterAndRenderItems();
+            loadItems();
         });
     }
 
@@ -127,9 +151,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const editStatus = document.getElementById('editStatus');
     if (editStatus) {
         editStatus.addEventListener('change', function() {
+            toggleUnlockDateVisibility(this.value, 'editUnlockDateGroup', 'editUnlockDate');
             const sellingPriceGroup = document.getElementById('editSellingPriceGroup');
             const soldPriceGroup = document.getElementById('editSoldPriceGroup');
-            const unlockDateGroup = document.getElementById('editUnlockDateGroup');
             
             // Show/hide selling price field
             sellingPriceGroup.style.display = this.value === 'Selling' ? 'block' : 'none';
@@ -137,18 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show/hide sold price field
             soldPriceGroup.style.display = this.value === 'Sold' ? 'block' : 'none';
             
-            // Show/hide unlock date field
-            unlockDateGroup.style.display = this.value === 'Tradelock' ? 'block' : 'none';
-            
             // Clear fields when not visible
             if (this.value !== 'Selling') {
                 document.getElementById('editSellingPrice').value = '';
             }
             if (this.value !== 'Sold') {
                 document.getElementById('editSoldPrice').value = '';
-            }
-            if (this.value !== 'Tradelock') {
-                document.getElementById('editUnlockDate').value = '';
             }
         });
     }
@@ -180,14 +198,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Add event listener for status change in both add and edit modals
+    const addStatusSelect = document.getElementById('itemStatus');
+    const editStatusSelect = document.getElementById('editStatus');
+
+    if (addStatusSelect) {
+        addStatusSelect.addEventListener('change', function() {
+            toggleUnlockDateVisibility(this.value, 'unlockDateContainer', 'unlockDate');
+        });
+    }
+
+    if (editStatusSelect) {
+        editStatusSelect.addEventListener('change', function() {
+            toggleUnlockDateVisibility(this.value, 'editUnlockDateGroup', 'editUnlockDate');
+        });
+    }
+
+    // Add event listeners for image preview
+    const addItemNameInput = document.getElementById('itemName');
+    const addItemImagePreview = document.getElementById('addItemImagePreview');
+    
+    if (addItemNameInput && addItemImagePreview) {
+        addItemNameInput.addEventListener('input', function() {
+            const selectedSkin = this.value;
+            const imageUrl = SKIN_NAMES[selectedSkin] || '/static/default_item.png';
+            addItemImagePreview.src = imageUrl;
+            addItemImagePreview.alt = selectedSkin || 'Item Preview';
+        });
+    }
+
+    const editItemNameInput = document.getElementById('editName');
+    const editItemImagePreview = document.getElementById('editItemImagePreview');
+    
+    if (editItemNameInput && editItemImagePreview) {
+        editItemNameInput.addEventListener('input', function() {
+            const selectedSkin = this.value;
+            const imageUrl = SKIN_NAMES[selectedSkin] || '/static/default_item.png';
+            editItemImagePreview.src = imageUrl;
+            editItemImagePreview.alt = selectedSkin || 'Item Preview';
+        });
+    }
+
     // Load initial data
     loadItems();
+
+    setupFormSkinNames();
 });
 
 async function handleFormSubmit(event) {
     event.preventDefault();
     
     try {
+        // Validate required fields
+        const requiredFields = ['itemName', 'itemCategory', 'itemSubcategory', 'itemStatus', 'itemPurchaseSource'];
+        let isValid = true;
+        
+        requiredFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            showToast('Validation Error', 'Please fill in all required fields.');
+            return;
+        }
+
         // Get form values
         const formData = {
             name: document.getElementById('itemName').value.trim(),
@@ -204,43 +284,30 @@ async function handleFormSubmit(event) {
             notes: document.getElementById('itemNotes').value.trim() || null
         };
 
-        // Validate required fields
-        if (!formData.name || !formData.category || !formData.subcategory || !formData.status) {
-            throw new Error('Please fill in all required fields');
-        }
-
         // Handle purchase price/coins based on purchase source
         if (formData.purchase_source === 'Trading') {
             const coins = document.getElementById('purchaseCoins').value;
-            formData.purchase_coins = coins ? parseInt(coins) : null;
+            formData.purchase_coins = coins ? parseFloat(coins) : null;
         } else {
             const price = document.getElementById('purchasePrice').value;
             formData.purchase_price = price ? parseFloat(price) : null;
         }
 
-        // Handle status-specific fields
-        switch (formData.status) {
-            case 'Selling':
-                const sellingPrice = document.getElementById('sellingPrice').value;
-                formData.selling_price = sellingPrice ? parseFloat(sellingPrice) : null;
-                break;
-            case 'Sold':
-                const soldPrice = document.getElementById('soldPrice').value;
-                formData.sold_price = soldPrice ? parseFloat(soldPrice) : null;
-                break;
-            case 'Tradelock':
-                formData.unlock_date = document.getElementById('unlockDate').value || null;
-                break;
+        // Handle additional fields based on status
+        if (formData.status === 'Selling') {
+            const sellingPrice = document.getElementById('sellingPrice').value;
+            formData.selling_price = sellingPrice ? parseFloat(sellingPrice) : null;
+        } else if (formData.status === 'Sold') {
+            const soldPrice = document.getElementById('soldPrice').value;
+            formData.sold_price = soldPrice ? parseFloat(soldPrice) : null;
+        } else if (formData.status === 'Tradelock') {
+            const unlockDate = document.getElementById('unlockDate').value;
+            formData.unlock_date = unlockDate || null;
         }
 
-        const itemId = currentItemId;
-        const method = itemId ? 'PUT' : 'POST';
-        const url = itemId ? `/api/items/${itemId}` : '/api/items';
-
-        console.log('Sending data:', formData); // Debug log
-
-        const response = await fetch(url, {
-            method: method,
+        // Send data to server
+        const response = await fetch('/api/items', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -248,56 +315,65 @@ async function handleFormSubmit(event) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to save item');
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
-        const result = await response.json();
-        console.log('Server response:', result); // Debug log
-
-        // Close modal and refresh
+        // Reset form and show success toast
+        showToast('Success', 'Item added successfully');
         const modal = bootstrap.Modal.getInstance(document.getElementById('addItemModal'));
         modal.hide();
-        
-        // Reset form and state
-        resetForm();
-        currentItemId = null;
-        
-        // Reload items
-        await loadItems();
-        showToast('Success', `Item ${itemId ? 'updated' : 'added'} successfully`);
+        loadItems();
     } catch (error) {
         console.error('Error saving item:', error);
-        showToast('Error', error.message || 'Failed to save item. Please try again.');
+        showToast('Error', error.message || 'Failed to save item');
     }
 }
 
 async function submitEditForm(event) {
     event.preventDefault();
     
-    const formData = {
-        name: document.getElementById('editName').value,
-        category: document.getElementById('editCategory').value,
-        subcategory: document.getElementById('editSubcategory').value,
-        float: parseFloat(document.getElementById('editFloat').value) || null,
-        status: document.getElementById('editStatus').value,
-        purchase_source: document.getElementById('editPurchaseSource').value,
-        purchase_price: document.getElementById('editPurchaseSource').value === 'Trading' ?
-            null : parseFloat(document.getElementById('editPurchasePrice').value) || null,
-        purchase_coins: document.getElementById('editPurchaseSource').value === 'Trading' ?
-            parseInt(document.getElementById('editPurchaseCoins').value) || null : null,
-        selling_price: document.getElementById('editStatus').value === 'Selling' ?
-            parseFloat(document.getElementById('editSellingPrice').value) || null : null,
-        sold_price: document.getElementById('editStatus').value === 'Sold' ?
-            parseFloat(document.getElementById('editSoldPrice').value) || null : null,
-        unlock_date: document.getElementById('editStatus').value === 'Tradelock' ?
-            document.getElementById('editUnlockDate').value : null,
-        notes: document.getElementById('editNotes').value
-    };
-
     try {
-        const itemId = document.getElementById('editItemId').value;
-        const response = await fetch(`/api/items/${itemId}`, {
+        // Get form values
+        const formData = {
+            id: document.getElementById('editItemId').value,
+            name: document.getElementById('editName').value.trim(),
+            category: document.getElementById('editCategory').value,
+            subcategory: document.getElementById('editSubcategory').value,
+            float: document.getElementById('editFloat').value ? parseFloat(document.getElementById('editFloat').value) : null,
+            status: document.getElementById('editStatus').value,
+            purchase_source: document.getElementById('editPurchaseSource').value,
+            purchase_price: null,
+            purchase_coins: null,
+            selling_price: null,
+            sold_price: null,
+            unlock_date: null,
+            notes: document.getElementById('editNotes').value.trim() || null
+        };
+
+        // Handle purchase price/coins based on purchase source
+        if (formData.purchase_source === 'Trading') {
+            const coins = document.getElementById('editPurchaseCoins').value;
+            formData.purchase_coins = coins ? parseFloat(coins) : null;
+        } else {
+            const price = document.getElementById('editPurchasePrice').value;
+            formData.purchase_price = price ? parseFloat(price) : null;
+        }
+
+        // Handle additional fields based on status
+        if (formData.status === 'Selling') {
+            const sellingPrice = document.getElementById('editSellingPrice').value;
+            formData.selling_price = sellingPrice ? parseFloat(sellingPrice) : null;
+        } else if (formData.status === 'Sold') {
+            const soldPrice = document.getElementById('editSoldPrice').value;
+            formData.sold_price = soldPrice ? parseFloat(soldPrice) : null;
+        } else if (formData.status === 'Tradelock') {
+            const unlockDate = document.getElementById('editUnlockDate').value;
+            formData.unlock_date = unlockDate || null;
+        }
+
+        // Send data to server
+        const response = await fetch(`/api/items/${formData.id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -306,24 +382,186 @@ async function submitEditForm(event) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update item');
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
-        // Close modal and refresh items
+        // Reset form and show success toast
+        showToast('Success', 'Item updated successfully');
         const modal = bootstrap.Modal.getInstance(document.getElementById('editItemModal'));
         modal.hide();
         loadItems();
-        showToast('Success', 'Item updated successfully');
     } catch (error) {
-        console.error('Error:', error);
-        showToast('Error', error.message);
+        console.error('Error updating item:', error);
+        showToast('Error', error.message || 'Failed to update item');
     }
+}
+
+function getFloatDescription(floatValue) {
+    if (floatValue <= 0.07) return 'Factory New';
+    if (floatValue <= 0.15) return 'Minimal Wear';
+    if (floatValue <= 0.38) return 'Field-Tested';
+    if (floatValue <= 0.45) return 'Well-Worn';
+    return 'Battle-Scarred';
+}
+
+function createFloatBar(floatValue) {
+    const categories = [
+        { name: 'fn', min: 0, max: 0.07, width: 1.35135 },
+        { name: 'mw', min: 0.07, max: 0.15, width: 10.8108 },
+        { name: 'ft', min: 0.15, max: 0.38, width: 31.0811 },
+        { name: 'ww', min: 0.38, max: 0.45, width: 9.45946 },
+        { name: 'bs', min: 0.45, max: 1, width: 47.2973 }
+    ];
+
+    const floatBar = document.createElement('div');
+    floatBar.style.height = '100%';
+    floatBar.style.borderRadius = '4px';
+    floatBar.style.overflow = 'hidden';
+    floatBar.style.display = 'flex';
+
+    categories.forEach(cat => {
+        const segment = document.createElement('div');
+        segment.classList.add('float-bar-width', `progress-width-${cat.name}`);
+        segment.style.width = `${cat.width}%`;
+        segment.style.backgroundColor = getFloatBarColor(cat.name);
+        floatBar.appendChild(segment);
+    });
+
+    return floatBar;
+}
+
+function getFloatBarColor(category) {
+    const colors = {
+        'fn': '#4b9f45',   // Green for Factory New
+        'mw': '#a4d36c',   // Light Green for Minimal Wear
+        'ft': '#d4b654',   // Yellow for Field-Tested
+        'ww': '#ce8c35',   // Orange for Well-Worn
+        'bs': '#b0483b'    // Red for Battle-Scarred
+    };
+    return colors[category] || '#888';
+}
+
+function createItemRow(item) {
+    // Create card container
+    const card = document.createElement('div');
+    card.classList.add('card', 'mb-2', 'h-100');
+    card.style.borderRadius = '12px';
+    card.style.backgroundColor = 'var(--module-background-color)';
+    card.style.color = '#fff';
+    card.style.position = 'relative';
+    card.style.border = '1px solid rgba(255,255,255,0.1)';
+
+    // Card body
+    const cardBody = document.createElement('div');
+    cardBody.classList.add('card-body', 'd-flex', 'flex-column');
+    cardBody.style.gap = '10px';
+    cardBody.style.padding = '10px';
+    cardBody.style.color = '#fff';
+
+    // Row 1: Item Name
+    const nameElement = document.createElement('h5');
+    nameElement.textContent = item.name;
+    nameElement.classList.add('card-title');
+    nameElement.style.margin = '0';
+    nameElement.style.fontSize = '14px';
+    nameElement.style.fontWeight = '600';
+    nameElement.style.whiteSpace = 'nowrap';
+    nameElement.style.overflow = 'hidden';
+    nameElement.style.textOverflow = 'ellipsis';
+    nameElement.style.color = '#fff';
+
+    // Row 2: Float Description
+    const floatDescElement = document.createElement('p');
+    floatDescElement.textContent = getFloatDescription(item.float);
+    floatDescElement.classList.add('card-text');
+    floatDescElement.style.margin = '0';
+    floatDescElement.style.color = 'rgba(255,255,255,0.7)';
+    floatDescElement.style.fontSize = '12px';
+
+    // Row 3: Item Image
+    const imageContainer = document.createElement('div');
+    imageContainer.style.width = '100%';
+    imageContainer.style.height = '200px';  
+    imageContainer.style.display = 'flex';
+    imageContainer.style.justifyContent = 'center';
+    imageContainer.style.alignItems = 'center';
+
+    const itemImage = document.createElement('img');
+    itemImage.src = getItemImage(item.name);
+    itemImage.style.width = '100%';  
+    itemImage.style.height = '100%';
+    itemImage.style.objectFit = 'contain';
+    itemImage.alt = item.name;
+
+    imageContainer.appendChild(itemImage);
+
+    // Row 4: Price
+    const priceElement = document.createElement('p');
+    priceElement.textContent = `$${formatPrice(item.price)}`;
+    priceElement.classList.add('card-text');
+    priceElement.style.margin = '0';
+    priceElement.style.fontWeight = 'bold';
+    priceElement.style.fontSize = '12px';
+    priceElement.style.color = '#fff';
+
+    // Row 5: Float Bar
+    const floatBarContainer = document.createElement('div');
+    floatBarContainer.style.width = '100%';
+    floatBarContainer.style.height = '8px';
+    floatBarContainer.style.marginTop = '5px';
+
+    const floatBar = createFloatBar(item.float);
+    floatBarContainer.appendChild(floatBar);
+
+    // Assemble card
+    cardBody.appendChild(nameElement);
+    cardBody.appendChild(floatDescElement);
+    cardBody.appendChild(imageContainer);
+    cardBody.appendChild(priceElement);
+    cardBody.appendChild(floatBarContainer);
+
+    card.appendChild(cardBody);
+
+    // Action buttons
+    const cardActions = document.createElement('div');
+    cardActions.classList.add('card-footer', 'd-flex', 'justify-content-between', 'p-1');
+    cardActions.style.backgroundColor = 'var(--module-highlight-background-color)';
+    cardActions.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+
+    const editButton = document.createElement('button');
+    editButton.textContent = 'Edit';
+    editButton.classList.add('btn', 'btn-sm', 'btn-outline-primary', 'w-50', 'm-1');
+    editButton.style.fontSize = '10px';
+    editButton.style.color = '#fff';
+    editButton.onclick = () => editItem(item.id);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.textContent = 'Delete';
+    deleteButton.classList.add('btn', 'btn-sm', 'btn-outline-danger', 'w-50', 'm-1');
+    deleteButton.style.fontSize = '10px';
+    deleteButton.style.color = '#fff';
+    deleteButton.onclick = () => deleteItem(item.id);
+
+    cardActions.appendChild(editButton);
+    cardActions.appendChild(deleteButton);
+
+    card.appendChild(cardActions);
+
+    // Wrap card in a column for grid layout
+    const cardColumn = document.createElement('div');
+    cardColumn.classList.add('col', 'p-1');
+    cardColumn.appendChild(card);
+
+    return cardColumn;
 }
 
 function loadItems() {
     fetch('/api/items')
         .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -331,139 +569,155 @@ function loadItems() {
         })
         .then(items => {
             console.log('Loaded items:', items);
+            
+            // Validate items
+            if (!Array.isArray(items)) {
+                throw new Error('Received data is not an array');
+            }
+            
             allItems = items;
-            filterAndRenderItems();
+            filterAndRenderItems(allItems);
         })
         .catch(error => {
             console.error('Error loading items:', error);
-            showToast('Error', 'Failed to load items');
+            showToast('Error', `Failed to load items: ${error.message}`);
         });
 }
 
-function filterAndRenderItems() {
-    console.log('Filtering items:', allItems);
-    const filteredItems = allItems.filter(item => {
-        if (currentFilters.category && item.category !== currentFilters.category) return false;
-        if (currentFilters.subcategory && item.subcategory !== currentFilters.subcategory) return false;
-        if (currentFilters.status && item.status !== currentFilters.status) return false;
-        return true;
+function filterAndRenderItems(items) {
+    const sellingItemsContainer = document.getElementById('sellingItemsContainer');
+    if (!sellingItemsContainer) return;
+
+    // Clear previous content
+    sellingItemsContainer.innerHTML = '';
+
+    // Create a single row
+    const itemRow = document.createElement('div');
+    itemRow.classList.add('row', 'g-2');
+    itemRow.style.display = 'flex';
+    itemRow.style.flexWrap = 'nowrap';
+    itemRow.style.overflowX = 'auto';
+
+    // Filter selling items
+    const sellingItems = items.filter(item => item.status === 'Selling');
+    
+    // Render items (limit to 10)
+    sellingItems.slice(0, 10).forEach(item => {
+        const itemColumn = createItemRow(item);
+        itemColumn.classList.add('col-auto');  // Use col-auto to prevent wrapping
+        itemColumn.style.flex = '0 0 auto';    // Prevent flex growth
+        itemColumn.style.width = '300px';      // Increased width to accommodate full-width images
+        itemRow.appendChild(itemColumn);
     });
 
-    console.log('Filtered items:', filteredItems);
-    renderItems(filteredItems);
-    updateDashboard(filteredItems);
-}
-
-function renderItems(items) {
-    const sellingContainer = document.getElementById('sellingItemsContainer');
-    const tradelockContainer = document.getElementById('tradelockItemsContainer');
-    const inventoryContainer = document.getElementById('inventoryItemsContainer');
-    const soldContainer = document.getElementById('soldItemsContainer');
-    
-    // Clear existing items
-    sellingContainer.innerHTML = '';
-    tradelockContainer.innerHTML = '';
-    inventoryContainer.innerHTML = '';
-    soldContainer.innerHTML = '';
-    
-    items.forEach(item => {
-        const row = document.createElement('tr');
-        let displayPrice, potentialProfit;
-        
-        if (item.status === 'Selling') {
-            displayPrice = item.selling_price;
-            potentialProfit = item.selling_price - item.purchase_price;
-        } else if (item.status === 'Sold') {
-            displayPrice = item.sold_price;
-            potentialProfit = item.sold_price - item.purchase_price;
-        }
-        
-        // Basic content that's the same for all statuses
-        row.innerHTML = `
-            <td title="${item.name}">${item.name}</td>
-            <td title="${item.subcategory}">${item.subcategory}</td>
-            <td><span class="badge ${getFloatClass(item.float)}" title="${item.float || 'N/A'}">${item.float || 'N/A'}</span></td>
-            <td title="${item.purchase_source}">${item.purchase_source}</td>
-            <td title="${formatPrice(item.purchase_price)}">${formatPrice(item.purchase_price)}</td>
-            <td title="${displayPrice ? formatPrice(displayPrice) : '-'}">${displayPrice ? formatPrice(displayPrice) : '-'}</td>
-            <td title="${potentialProfit ? formatPrice(potentialProfit) : '-'}">${potentialProfit ? formatPrice(potentialProfit) : '-'}</td>
-            <td class="action-column">
-                <button class="btn btn-sm btn-primary" onclick="editItem(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                    <span class="material-icons">edit</span>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="deleteItem('${item.id}')">
-                    <span class="material-icons">delete</span>
-                </button>
-            </td>
-        `;
-
-        // Add row to appropriate container based on status
-        switch(item.status) {
-            case 'Selling':
-                sellingContainer.appendChild(row);
-                break;
-            case 'Tradelock':
-                tradelockContainer.appendChild(row);
-                break;
-            case 'Available':
-                inventoryContainer.appendChild(row);
-                break;
-            case 'Sold':
-                soldContainer.appendChild(row);
-                break;
-        }
-    });
+    // Append the row to the container
+    sellingItemsContainer.appendChild(itemRow);
 
     // Update dashboard
     updateDashboard(items);
 }
 
 function updateDashboard(items) {
-    // Update total items count
-    const totalItems = items.length;
-    document.getElementById('totalItems').textContent = totalItems;
+    // Check if dashboard elements exist before updating
+    const totalItemsElement = document.getElementById('totalItemsCount');
+    const sellingItemsElement = document.getElementById('sellingItemsCount');
+    const tradelockItemsElement = document.getElementById('tradelockItemsCount');
+    const soldItemsElement = document.getElementById('soldItemsCount');
 
-    // Update active items (not sold)
-    const activeItems = items.filter(item => item.status !== 'Sold').length;
-    document.getElementById('activeItems').textContent = activeItems;
-
-    // Update total value (sum of purchase prices)
-    const totalValue = items
-        .filter(item => item.status !== 'Sold')
-        .reduce((sum, item) => sum + (item.purchase_price || 0), 0);
-    document.getElementById('totalValue').textContent = formatPrice(totalValue);
+    if (totalItemsElement) totalItemsElement.textContent = items.length;
+    if (sellingItemsElement) sellingItemsElement.textContent = items.filter(item => item.status === 'Selling').length;
+    if (tradelockItemsElement) tradelockItemsElement.textContent = items.filter(item => item.status === 'Tradelock').length;
+    if (soldItemsElement) soldItemsElement.textContent = items.filter(item => item.status === 'Sold').length;
 }
 
 function populateSubcategories(category, targetId = 'itemSubcategory') {
     const subcategorySelect = document.getElementById(targetId);
-    subcategorySelect.innerHTML = '<option value="" disabled selected>Select type</option>';
+    subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
     
     if (category && subcategories[category]) {
-        subcategories[category].forEach(sub => {
+        subcategories[category].forEach(subcategory => {
             const option = document.createElement('option');
-            option.value = sub;
-            option.textContent = sub;
+            option.value = subcategory;
+            option.textContent = subcategory;
             subcategorySelect.appendChild(option);
+        });
+    }
+}
+
+function updateFilterSubcategories() {
+    const filterCategory = document.getElementById('filterCategory');
+    const filterSubcategory = document.getElementById('filterSubcategory');
+    
+    filterSubcategory.innerHTML = '<option value="">All Subcategories</option>';
+    
+    if (filterCategory.value && subcategories[filterCategory.value]) {
+        subcategories[filterCategory.value].forEach(subcategory => {
+            const option = document.createElement('option');
+            option.value = subcategory;
+            option.textContent = subcategory;
+            filterSubcategory.appendChild(option);
         });
     }
 }
 
 function resetForm() {
     const form = document.getElementById('addItemForm');
-    form.reset();
-    currentItemId = null;
+    if (form) {
+        form.reset();
+    }
     
-    // Reset and disable subcategory
+    // Reset category and subcategory
+    const categorySelect = document.getElementById('itemCategory');
     const subcategorySelect = document.getElementById('itemSubcategory');
-    subcategorySelect.innerHTML = '<option value="" disabled selected>Select type</option>';
-    subcategorySelect.disabled = true;
     
-    // Hide conditional containers
-    document.getElementById('sellingPriceGroup').style.display = 'none';
-    document.getElementById('soldPriceGroup').style.display = 'none';
-    document.getElementById('unlockDateGroup').style.display = 'none';
-    document.getElementById('purchaseCoinsGroup').style.display = 'none';
-    document.getElementById('purchasePriceGroup').style.display = 'block';
+    if (categorySelect) {
+        categorySelect.selectedIndex = 0;
+    }
+    
+    if (subcategorySelect) {
+        subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
+        subcategorySelect.disabled = false;
+    }
+    
+    // Reset status-related containers
+    const statusSelect = document.getElementById('itemStatus');
+    if (statusSelect) {
+        statusSelect.selectedIndex = 0;
+        
+        const sellingPriceGroup = document.getElementById('sellingPriceGroup');
+        const soldPriceGroup = document.getElementById('soldPriceGroup');
+        const unlockDateGroup = document.getElementById('unlockDateGroup');
+        
+        if (sellingPriceGroup) sellingPriceGroup.style.display = 'none';
+        if (soldPriceGroup) soldPriceGroup.style.display = 'none';
+        if (unlockDateGroup) unlockDateGroup.style.display = 'none';
+    }
+    
+    // Reset purchase source-related containers
+    const purchaseSourceSelect = document.getElementById('itemPurchaseSource');
+    if (purchaseSourceSelect) {
+        purchaseSourceSelect.selectedIndex = 0;
+        
+        const purchaseCoinsContainer = document.getElementById('purchaseCoinsContainer');
+        const purchasePriceContainer = document.getElementById('purchasePriceContainer');
+        
+        if (purchaseCoinsContainer) purchaseCoinsContainer.style.display = 'none';
+        if (purchasePriceContainer) purchasePriceContainer.style.display = 'block';
+    }
+}
+
+function toggleUnlockDateVisibility(status, containerID, inputID) {
+    const container = document.getElementById(containerID);
+    const input = document.getElementById(inputID);
+    
+    if (status === 'Tradelock') {
+        container.style.display = 'block';
+        input.required = true;
+    } else {
+        container.style.display = 'none';
+        input.required = false;
+        input.value = ''; // Clear the date when not in Tradelock
+    }
 }
 
 function formatPrice(price) {
@@ -493,53 +747,74 @@ function showToast(title, message) {
 }
 
 // Make functions available globally
-window.editItem = function(item) {
-    console.log('Editing item:', item);
-    currentItemId = item.id;
-    
-    // Populate form fields
-    document.getElementById('editItemId').value = item.id;
-    document.getElementById('editName').value = item.name;
-    document.getElementById('editCategory').value = item.category;
-    populateSubcategories(item.category, 'editSubcategory');
-    document.getElementById('editSubcategory').value = item.subcategory;
-    document.getElementById('editFloat').value = item.float || '';
-    document.getElementById('editPurchaseSource').value = item.purchase_source;
-    document.getElementById('editStatus').value = item.status;
-    document.getElementById('editNotes').value = item.notes || '';
+window.editItem = function(itemId) {
+    fetch(`/api/items/${itemId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch item details');
+            }
+            return response.json();
+        })
+        .then(item => {
+            // Populate form fields
+            document.getElementById('editItemId').value = item.id;
+            document.getElementById('editName').value = item.name;
+            document.getElementById('editCategory').value = item.category;
+            
+            // Trigger subcategory population
+            const editCategorySelect = document.getElementById('editCategory');
+            const event = new Event('change');
+            editCategorySelect.dispatchEvent(event);
+            
+            // Set subcategory after a short delay to ensure it's populated
+            setTimeout(() => {
+                document.getElementById('editSubcategory').value = item.subcategory;
+            }, 50);
 
-    // Handle purchase price/coins based on source
-    if (item.purchase_source === 'Trading') {
-        document.getElementById('editPurchaseCoinsGroup').style.display = 'block';
-        document.getElementById('editPurchasePriceGroup').style.display = 'none';
-        document.getElementById('editPurchaseCoins').value = item.purchase_coins || '';
-    } else {
-        document.getElementById('editPurchasePriceGroup').style.display = 'block';
-        document.getElementById('editPurchaseCoinsGroup').style.display = 'none';
-        document.getElementById('editPurchasePrice').value = item.purchase_price || '';
-    }
+            document.getElementById('editFloat').value = item.float || '';
+            document.getElementById('editPurchaseSource').value = item.purchase_source;
+            
+            // Set purchase price or coins
+            if (item.purchase_source === 'Trading') {
+                document.getElementById('editPurchaseCoinsGroup').style.display = 'block';
+                document.getElementById('editPurchasePriceGroup').style.display = 'none';
+                document.getElementById('editPurchaseCoins').value = item.purchase_coins || '';
+            } else {
+                document.getElementById('editPurchaseCoinsGroup').style.display = 'none';
+                document.getElementById('editPurchasePriceGroup').style.display = 'block';
+                document.getElementById('editPurchasePrice').value = item.purchase_price || '';
+            }
 
-    // Show/hide selling price field
-    const sellingPriceGroup = document.getElementById('editSellingPriceGroup');
-    sellingPriceGroup.style.display = item.status === 'Selling' ? 'block' : 'none';
-    document.getElementById('editSellingPrice').value = item.selling_price || '';
+            // Set status and related fields
+            document.getElementById('editStatus').value = item.status;
+            const editStatusEvent = new Event('change');
+            document.getElementById('editStatus').dispatchEvent(editStatusEvent);
 
-    // Show/hide sold price field
-    const soldPriceGroup = document.getElementById('editSoldPriceGroup');
-    soldPriceGroup.style.display = item.status === 'Sold' ? 'block' : 'none';
-    document.getElementById('editSoldPrice').value = item.sold_price || '';
+            // Set additional fields based on status
+            if (item.status === 'Selling') {
+                document.getElementById('editSellingPrice').value = item.selling_price || '';
+            } else if (item.status === 'Sold') {
+                document.getElementById('editSoldPrice').value = item.sold_price || '';
+            } else if (item.status === 'Tradelock') {
+                document.getElementById('editUnlockDate').value = item.unlock_date || '';
+            }
 
-    // Show/hide unlock date field
-    const unlockDateGroup = document.getElementById('editUnlockDateGroup');
-    unlockDateGroup.style.display = item.status === 'Tradelock' ? 'block' : 'none';
-    if (item.unlock_date) {
-        const unlockDate = new Date(item.unlock_date);
-        document.getElementById('editUnlockDate').value = unlockDate.toISOString().slice(0, 16);
-    }
+            // Set notes
+            document.getElementById('editNotes').value = item.notes || '';
 
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('editItemModal'));
-    modal.show();
+            // Set image preview
+            const editItemImagePreview = document.getElementById('editItemImagePreview');
+            editItemImagePreview.src = getItemImage(item.name);
+            editItemImagePreview.alt = item.name;
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('editItemModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'Failed to load item details');
+        });
 };
 
 window.deleteItem = function(itemId) {
@@ -562,3 +837,37 @@ window.deleteItem = function(itemId) {
         showToast('Error', 'Failed to delete item');
     });
 };
+
+function setupFormSkinNames() {
+    const skinNameSelects = [
+        document.getElementById('itemName'), 
+        document.getElementById('editName')
+    ];
+
+    skinNameSelects.forEach(select => {
+        if (select) {
+            // Clear existing options
+            select.innerHTML = '<option value="">Select Skin</option>';
+            
+            // Add predefined skin names
+            Object.keys(SKIN_NAMES).forEach(skinName => {
+                const option = document.createElement('option');
+                option.value = skinName;
+                option.textContent = skinName;
+                select.appendChild(option);
+            });
+
+            // Add event listener for image preview
+            select.addEventListener('change', function() {
+                const previewElement = document.getElementById('addItemImagePreview') || 
+                                       document.getElementById('editItemImagePreview');
+                if (previewElement) {
+                    const selectedSkin = this.value;
+                    const imageUrl = SKIN_NAMES[selectedSkin] || '/static/default_item.png';
+                    previewElement.src = imageUrl;
+                    previewElement.alt = selectedSkin || 'Item Preview';
+                }
+            });
+        }
+    });
+}

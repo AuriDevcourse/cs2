@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
@@ -48,7 +48,9 @@ class Item(db.Model):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', 
+                           datetime=datetime, 
+                           timedelta=timedelta)
 
 @app.route('/api/items', methods=['GET'])
 def get_items():
